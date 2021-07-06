@@ -76,7 +76,8 @@ given `parent'."
                  :title title
                  :height height
                  :width width
-                 :page page))
+                 :page page
+                 :hint hint))
 
 (defcfun "webview_create" webview-t
   (debug :int)
@@ -158,20 +159,30 @@ are ignored. Use `defbinding' to define functions that can return results.")
 
 (defmacro defbinding (webview name (&rest args) &body body)
   "Define a function that will be available in the global javascript context."
-  (a:with-gensyms (seq req arg fn result status err)
-    `(progn
-       (defcallback ,name :void ((,seq :string) (,req :string) (,arg :pointer))
-         (declare (ignore ,arg))
-         (flet ((,fn (,@args) ,@body))
+  (a:with-gensyms (seq req arg result status err)
+    (let ((js-name (lisp-name->js-name name)))
+      `(progn        
+         (defun ,name (,@args)
+           ,@body)
+         (defcallback ,js-name :void ((,seq :string) (,req :string) (,arg :pointer))
+           (declare (ignore ,arg))
            (let (,result
                  (,status 0))
-             (handler-case
-                 (setf ,result (apply #',fn (json-array->list ,req)))
-               (error (,err)
-                 (setf ,result (format nil "~a" ,err))
-                 (setf ,status -1)))
-             (returns ,webview ,seq ,status ,result))))
-       (bind ,webview ',name))))
+               (handler-case
+                   (setf ,result (apply #',name (json-array->list ,req)))
+                 (error (,err)
+                   (setf ,result (format nil "~a" ,err))
+                   (setf ,status -1)))
+               (returns ,webview ,seq ,status ,result)))
+         (bind ,webview ',js-name)))))
+
+(defun lisp-name->js-name (lisp-name)
+  (let* ((string (string lisp-name))
+         (splits (loop :for i := 0 :then (1+ j)
+                       :as j := (position #\- string :start i)
+                       :collect (subseq string i j)
+                       :while j)))
+    (intern (format nil "%~{~a~^_~}" splits))))
 
 (defun json-array->list (array-string)
   (map 'list #'identity (jzon:parse array-string)))
@@ -193,7 +204,7 @@ expected to be valid JSON, other wise `result' should be an error.")
 function.")
   (:method ((webview webview) name)
     (let ((fn (eval `(callback ,name)))
-          (fn-id (string-downcase (string name)))
+          (fn-id (string-downcase (subseq (string name) 1)))
           (pointer (pointer webview)))
       (webview-bind pointer fn-id fn (null-pointer)))))
 

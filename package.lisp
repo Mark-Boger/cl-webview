@@ -16,4 +16,10 @@
    #:evaluate
    #:returns
    #:bind
-   #:defbinding))
+   #:defbinding
+   #:pointer
+   #:title
+   #:height
+   #:width
+   #:page
+   #:hint))

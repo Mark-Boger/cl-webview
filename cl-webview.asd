@@ -15,7 +15,7 @@
         (out (first (output-files o c))))
     (uiop:run-program
      (format nil
-                "c++ -g -Wall -DWEBVIEW_GTK $(pkg-config --cflags --libs gtk+-3.0)  $(pkg-config --cflags --libs webkit2gtk-4.0) -std=c++11 -fPIC -shared ~a -o ~a"
+             "g++ $(pkg-config --cflags --libs gtk+-3.0 webkit2gtk-4.0) -fPIC -shared ~a -o ~a"
              in out))))
 
 (defmethod perform ((o load-op) (c ccfile))
